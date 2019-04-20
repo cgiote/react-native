@@ -316,13 +316,11 @@ public class ReactScrollView extends ScrollView implements ReactClippingViewGrou
     // us and use the sign of what mOnScrollDispatchHelper has tracked.
     //final int correctedVelocityY = (int)(Math.abs(velocityY) * Math.signum(mOnScrollDispatchHelper.getYFlingVelocity()));
 
-    //BEGIN pavel.rotek wrong velocity on old phones
     float signum = Math.signum(mOnScrollDispatchHelper.getYFlingVelocity());
     if (signum == 0) {
       signum = Math.signum(velocityY);
     }
     final int correctedVelocityY = (int)(Math.abs(velocityY) * signum);
-    //END
 
     if (mPagingEnabled) {
       flingAndSnap(correctedVelocityY);
