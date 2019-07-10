@@ -160,7 +160,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
 
     [self updateLocalData];
   } else if (eventLag > RCTTextUpdateLagWarningThreshold) {
-    RCTLogWarn(@"Native TextInput(%@) is %lld events ahead of JS - try to make your JS faster.", self.backedTextInputView.attributedText.string, (long long)eventLag);
+    RCTLog(@"Native TextInput(%@) is %lld events ahead of JS - try to make your JS faster.", self.backedTextInputView.attributedText.string, (long long)eventLag);
   }
 }
 
@@ -189,7 +189,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
   if (eventLag == 0 && ![previousSelectedTextRange isEqual:selectedTextRange]) {
     [backedTextInputView setSelectedTextRange:selectedTextRange notifyDelegate:NO];
   } else if (eventLag > RCTTextUpdateLagWarningThreshold) {
-    RCTLogWarn(@"Native TextInput(%@) is %lld events ahead of JS - try to make your JS faster.", backedTextInputView.attributedText.string, (long long)eventLag);
+    RCTLog(@"Native TextInput(%@) is %lld events ahead of JS - try to make your JS faster.", backedTextInputView.attributedText.string, (long long)eventLag);
   }
 }
 
@@ -260,6 +260,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
   #endif
 }
 
+
+- (void)setPasswordRules:(NSString *)descriptor
+{
+  #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0
+    if (@available(iOS 12.0, *)) {
+      self.backedTextInputView.passwordRules = [UITextInputPasswordRules passwordRulesWithDescriptor:descriptor];
+    }
+  #endif
+}
+
 - (UIKeyboardType)keyboardType
 {
   return self.backedTextInputView.keyboardType;
@@ -283,16 +293,16 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
 
 - (void)setSecureTextEntry:(BOOL)secureTextEntry {
   UIView<RCTBackedTextInputViewProtocol> *textInputView = self.backedTextInputView;
-    
+
   if (textInputView.secureTextEntry != secureTextEntry) {
     textInputView.secureTextEntry = secureTextEntry;
-      
+
     // Fix #5859, see https://stackoverflow.com/questions/14220187/uitextfield-has-trailing-whitespace-after-securetextentry-toggle/22537788#22537788
     NSAttributedString *originalText = [textInputView.attributedText copy];
     self.backedTextInputView.attributedText = [NSAttributedString new];
     self.backedTextInputView.attributedText = originalText;
   }
-    
+
 }
 
 #pragma mark - RCTBackedTextInputDelegate
@@ -381,7 +391,12 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
         // Truncate the input string so the result is exactly maxLength
         NSString *limitedString = [text substringToIndex:allowedLength];
         NSMutableAttributedString *newAttributedText = [backedTextInputView.attributedText mutableCopy];
-        [newAttributedText replaceCharactersInRange:range withString:limitedString];
+        // Apply text attributes if original input view doesn't have text.
+        if (backedTextInputView.attributedText.length == 0) {
+          newAttributedText = [[NSMutableAttributedString alloc] initWithString:[self.textAttributes applyTextAttributesToText:limitedString] attributes:self.textAttributes.effectiveTextAttributes];
+        } else {
+          [newAttributedText replaceCharactersInRange:range withString:limitedString];
+        }
         backedTextInputView.attributedText = newAttributedText;
         _predictedText = newAttributedText.string;
 
@@ -399,7 +414,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithFrame:(CGRect)frame)
   }
 
   NSString *previousText = backedTextInputView.attributedText.string ?: @"";
-  
+
   if (range.location + range.length > backedTextInputView.attributedText.string.length) {
     _predictedText = backedTextInputView.attributedText.string;
   } else {
